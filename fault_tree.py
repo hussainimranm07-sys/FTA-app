@@ -401,7 +401,7 @@ function render() {{
     }})
     .text(d=>{{
       const calc=calcNode(d);
-      return `P=${fmtP(calc)}`;
+      return `P=${{fmtP(calc)}}`;
     }});
 
   // target
