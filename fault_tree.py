@@ -28,9 +28,7 @@ MULTI-PATH ALLOCATION:
 
 import streamlit as st
 import streamlit.components.v1 as components
-import json, math, io, datetime, os
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+import json, math, io, datetime, os, csv
 
 st.set_page_config(page_title="FTA Risk Allocator", page_icon="⚛", layout="wide")
 
@@ -1327,35 +1325,38 @@ else:
 
     # ── TAB 4: EXPORT ────────────────────────────────────────
     with tab_export:
-        c1,c2 = st.columns(2)
+        c1, c2 = st.columns(2)
         with c1:
             st.markdown("**JSON (full project)**")
-            st.download_button("⬇ Download JSON", data=json.dumps(state_to_dict(),indent=2),
-                               file_name="fta_v11.json", mime="application/json",
+            st.download_button("⬇ Download JSON", data=json.dumps(state_to_dict(), indent=2),
+                               file_name="fta_project.json", mime="application/json",
                                use_container_width=True)
         with c2:
-            st.markdown("**Excel (.xlsx)**")
-            def build_xlsx():
-                wb = Workbook(); ws = wb.active; ws.title = "FTA_v11"
-                hdrs = ["Type","Label","Name","Desc","Parent(s)","Gate","Allocated T","Achieved A","OK?","Multi-parent","Shared"]
-                hf = PatternFill("solid",fgColor="0c1e38"); hfont = Font(name="Consolas",bold=True,color="7ab8e8")
-                for ci,h in enumerate(hdrs,1):
-                    c = ws.cell(1,ci,h); c.fill=hf; c.font=hfont; c.alignment=Alignment(horizontal="center")
-                for ri,nid in enumerate(order,2):
+            st.markdown("**CSV export**")
+            def build_csv():
+                hdrs = ["Type","Label","Name","Desc","Parent(s)","Gate",
+                        "Allocated T","Achieved A","OK?","Multi-parent","Shared"]
+                buf = io.StringIO()
+                w = csv.writer(buf)
+                w.writerow(hdrs)
+                for nid in order:
                     if nid not in nodes: continue
-                    n   = nodes[nid]
-                    alc = alloc.get(nid); rol = rolled.get(nid)
-                    pars = get_parents(edges,nid)
-                    pl = ", ".join(nodes[p].get("label",p) for p in pars if p in nodes) or "–"
-                    peers = nodes_with_label(nodes,n.get("label",""))
-                    ok = "YES" if (alc and rol and rol<=alc) else "NO" if (alc and rol and rol>alc) else "–"
-                    row = [n["type"],n.get("label",""),n.get("name",""),n.get("desc",""),
-                           pl,n.get("gate","–"),fmt(alc),fmt(rol),ok,
-                           "YES" if len(pars)>1 else "NO","YES" if len(peers)>1 else "NO"]
-                    for ci,v in enumerate(row,1): ws.cell(ri,ci,v)
-                for col in ["B","C","G","H"]: ws.column_dimensions[col].width=18
-                buf=io.BytesIO(); wb.save(buf); buf.seek(0); return buf.getvalue()
-            st.download_button("⬇ Download Excel", data=build_xlsx(),
-                               file_name="fta_v11.xlsx",
-                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    n    = nodes[nid]
+                    alc  = alloc.get(nid)
+                    rol  = rolled.get(nid)
+                    pars = get_parents(edges, nid)
+                    pl   = ", ".join(nodes[p].get("label", p) for p in pars if p in nodes) or "-"
+                    peers = nodes_with_label(nodes, n.get("label",""))
+                    ok   = ("YES" if (alc and rol and rol <= alc)
+                            else "NO" if (alc and rol and rol > alc) else "-")
+                    w.writerow([
+                        n["type"], n.get("label",""), n.get("name",""), n.get("desc",""),
+                        pl, n.get("gate","-"), fmt(alc), fmt(rol), ok,
+                        "YES" if len(pars) > 1 else "NO",
+                        "YES" if len(peers) > 1 else "NO",
+                    ])
+                return buf.getvalue().encode("utf-8")
+            st.download_button("⬇ Download CSV", data=build_csv(),
+                               file_name="fta_export.csv",
+                               mime="text/csv",
                                use_container_width=True)
