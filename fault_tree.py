@@ -32,7 +32,7 @@ import json, math, io, datetime, os
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 
-st.set_page_config(page_title="FTA Allocator v11", page_icon="⚛", layout="wide")
+st.set_page_config(page_title="FTA Risk Allocator", page_icon="⚛", layout="wide")
 
 st.markdown("""
 <style>
